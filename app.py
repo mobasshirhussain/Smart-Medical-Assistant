@@ -1,19 +1,111 @@
-# Smart Medical Assistant – Streamlit App
+# 🩺 Smart Medical Assistant
 import pickle
 import numpy as np
-import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-
-# PAGE CONFIG & STYLING
+# -------------------- PAGE SETTINGS --------------------
 st.set_page_config(page_title="Smart Medical Assistant", page_icon="🩺", layout="wide")
-st.title("🩺 Smart Medical Assistant")
-st.markdown("#### A research-based project for disease prediction with doctor recommendations")
 
-#  LOAD MODEL BUNDLE
+# -------------------- STYLE --------------------
+st.markdown("""
+<style>
+.stApp {
+    background-color: #f9fafb;
+    color: #111;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+h1 {
+    text-align: center;
+    color: #d32f2f;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+}
+.subtitle {
+    text-align: center;
+    color: #555;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+.section-title {
+    color: #1565c0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-top: 2rem;
+}
+.stButton>button {
+    background-color: #d32f2f;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 10px 25px;
+    border-radius: 8px;
+    border: none;
+    transition: 0.3s ease;
+    width: 100%;
+}
+.stButton>button:hover {
+    background-color: #b71c1c;
+    transform: scale(1.03);
+}
+.stMultiSelect div[data-baseweb="select"] {
+    background-color: #fff !important;
+    color: #111 !important;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+.stMultiSelect span[data-baseweb="tag"] {
+    background-color: #d32f2f !important;
+    color: white !important;
+    font-weight: 600;
+}
+.result-box {
+    background-color: #e8f5e9;
+    border-left: 8px solid #43a047;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 1.1rem;
+    color: #1b5e20;
+    font-weight: 700;
+}
+.doctor-box {
+    background-color: #e3f2fd;
+    border-left: 8px solid #1976d2;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+    font-size: 1.1rem;
+    color: #0d47a1;
+    font-weight: 700;
+}
+
+/* About Section */
+.about-expander {
+    border: 2px solid #90caf9;
+    background-color: #f1f8ff;
+    border-radius: 10px;
+    padding: 10px 15px;
+    margin-top: 20px;
+}
+.about-text {
+    color: #333;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    border: 2px solid #90caf9;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #f8fbff;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------- HEADER --------------------
+st.markdown("<h1>🩺 Smart Medical Assistant</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>AI-powered Symptom-to-Disease Predictor</p>", unsafe_allow_html=True)
+# st.markdown("-")
+
+# -------------------- LOAD MODEL --------------------
 @st.cache_resource
 def load_bundle():
     with open("medical_model.pkl", "rb") as f:
@@ -22,7 +114,7 @@ def load_bundle():
 
 model, encoder, scaler, feature_names = load_bundle()
 
-#  DOCTOR MAPPING
+# -------------------- DOCTOR MAPPING --------------------
 doctor_mapping = {
     "Fungal infection": "Dermatologist (Skin Specialist)",
     "Allergy": "Immunologist / General Physician",
@@ -67,62 +159,33 @@ doctor_mapping = {
     "Impetigo": "Dermatologist"
 }
 
-#  TABS: PREDICT | EVALUATION
-tabs = st.tabs(["🔍 Predict Disease", "📊 Model Evaluation"])
+# -------------------- INPUT SECTION --------------------
+st.markdown("<div class='section-title'>🧩 Select Your Symptoms</div>", unsafe_allow_html=True)
+selected_symptoms = st.multiselect("Choose symptoms you are experiencing:", feature_names)
 
-# PREDICT TAB 
-with tabs[0]:
-    st.subheader("Select your symptoms")
-    selected_symptoms = st.multiselect("Choose symptoms:", feature_names)
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    predict_btn = st.button("🔮 Predict Disease")
 
-    if st.button("Predict", type="primary"):
-        if not selected_symptoms:
-            st.warning(" Please select at least one symptom.")
-        else:
-            x = np.array([1 if s in selected_symptoms else 0 for s in feature_names], dtype=float).reshape(1, -1)
-            x_scaled = scaler.transform(x)
-            y_enc = model.predict(x_scaled)[0]
-            disease = encoder.inverse_transform([y_enc])[0]
+# -------------------- PREDICTION SECTION --------------------
+if predict_btn:
+    if not selected_symptoms:
+        st.warning("⚠️ Please select at least one symptom.")
+    else:
+        x = np.array([1 if s in selected_symptoms else 0 for s in feature_names], dtype=float).reshape(1, -1)
+        x_scaled = scaler.transform(x)
+        y_enc = model.predict(x_scaled)[0]
+        disease = encoder.inverse_transform([y_enc])[0]
+        doctor = doctor_mapping.get(disease, "General Physician")
 
-            doctor = doctor_mapping.get(disease, "General Physician")
+        st.markdown(f"<div class='result-box'>🧾 Predicted Disease: <b>{disease}</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='doctor-box'>👨‍⚕️ Recommended Doctor: <b>{doctor}</b></div>", unsafe_allow_html=True)
 
-            st.success(f"🧾 **Predicted Disease:** {disease}")
-            st.info(f"👨‍⚕️ **Recommended Doctor:** {doctor}")
-
-            with st.expander("About this project"):
-                st.caption("Research-based project with a curated dataset (knowledge base, not real patient data).")
-                # st.caption("100% accuracy is expected because:")
-                # st.caption("• Each disease has a fixed set of symptom mappings.")
-                # st.caption("• The ML model efficiently learns these mappings.")
-                # st.caption("• That's the nature of a knowledge-driven dataset.")
-                st.caption("This tool is for educational purposes only. Consult a licensed physician for medical advice.")
-                # st.caption("Additional contributions:")
-                # st.caption(" Cleaning & preprocessing pipeline")
-                # st.caption(" Accuracy, precision, recall, F1 + confusion matrix")
-                # st.caption(" Feature importance analysis")
-                # st.caption("Streamlit UI with doctor recommendation mapping")
-
-#  EVALUATION TAB 
-with tabs[1]:
-    st.subheader("Model Performance Metrics")
-    # Load test metrics from training or recompute quickly
-    # (Optional: store y_test/y_pred in bundle if you want exact values)
-    st.markdown("""
-    -  Accuracy, Precision, Recall, F1-score  
-    -  Confusion Matrix  
-    -  Top 10 most important symptoms  
-    """)
-
-    # Confusion matrix on training data (quick view)
-    st.write("### Confusion Matrix")
-    # We cannot recompute without y_test, but show placeholder
-    st.caption("Load metrics from training script for full report.")
-    st.warning("For detailed matrix, save `y_test` and `y_pred` in the bundle during training.")
-
-    st.write("### Top 10 Important Symptoms")
-    importances = pd.Series(model.feature_importances_, index=feature_names).sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8,5))
-    importances.iloc[::-1].plot.barh(ax=ax, color="teal")
-    ax.set_title("Top 10 Important Symptoms")
-    ax.set_xlabel("Importance")
-    st.pyplot(fig)
+        # 🩺 ABOUT SECTION - Clickable
+        with st.expander("ℹ️ About This Project"):
+            st.markdown("""
+            <div class='about-text'>
+                📘 This is a <b>research-based academic project</b> developed for disease prediction using curated medical data.<br><br>
+                ⚠️ <b>Disclaimer:</b> This tool is for educational and demonstration purposes only. Always consult a licensed physician for real medical advice.
+            </div>
+            """, unsafe_allow_html=True)
